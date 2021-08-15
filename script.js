@@ -1,3 +1,32 @@
+var select = function(a,...b){let n=document.querySelectorAll(a); return b[0]==undefined ? n[0]:n[b[0]]};
+var cl = function(a,...b){console.log(a,...b); return a};
+
+var cvs = select("#draw");
+var ctx = cvs.getContext('2d');
+ctx.ondraw = false;
+ctx.gap = 28/400;
+
+cvs.ondblclick = function(e){
+	ctx.clearRect(0,0,28,28);
+};
+cvs.onmousedown = function(e){
+	//ctx.clearRect(0,0,28,28);
+	ctx.beginPath();
+	ctx.moveTo(e.layerX*ctx.gap, e.layerY*ctx.gap);
+	ctx.ondraw = true;
+};
+cvs.onmousemove = function(e){
+	if(ctx.ondraw){
+		ctx.lineTo(e.layerX*ctx.gap, e.layerY*ctx.gap);
+		ctx.stroke();
+	}
+};
+cvs.onmouseup = function(e){
+	ctx.lineTo(e.layerX*ctx.gap, e.layerY*ctx.gap);
+	ctx.stroke();
+	ctx.closePath();
+	ctx.ondraw = false;
+}
 
 var mkRange = function(a){let sum=0; return Array(a).fill(1).map(function(k){return sum++;})};
 Math.rand = function(){let r=Math.random(); return Math.log(r/(1-r))};
@@ -5,8 +34,10 @@ JSON.new = function(a){return JSON.parse(JSON.stringify(a));};
 Array.sum = function(a){let sum=0; Array.num(a.length).map(function(k){sum += a[k]}); return sum;};
 var mkTensor = function(a,...b){return b.length==0 ? Array(a).fill(0):Array(a).fill(0).map(i=>mkTensor(...b))};
 var mkArray2 = function(arr){let r=mkTensor(arr.length); for(let i=0; i<arr.length; i++){r[i]=mkTensor(arr[i])} return r;};
-var fillRandom = function(arr){return arr.map(i => Math.random()).map(i => Math.log(i/(1-i)))};
-var cl = function (a, ...b){let c = Array.from(arguments).map(i=>JSON.new(i)); console.log.apply(this,c); return c[0];};
+var fillRandom = function(arr){
+	return arr.map(i => Math.random()).map(i => Math.log(i/(1-i))/2);
+};
+var jn=JSON.new;
 
 const AI = {};
 
@@ -50,7 +81,7 @@ AI.ANN.setLayer = function (layer){
 	this.variable.z = z;
 	this.variable.activationFunction = a;
 };
-AI.ANN.propagation = function(inputLayer){
+AI.ANN.propagation = function(iL){
 	let v = this.variable;
 	let l = v.layer;
 	let ll = l.length;
@@ -59,7 +90,7 @@ AI.ANN.propagation = function(inputLayer){
 	let b = v.bias;
 	let z = v.z;
 	let a = v.activationFunction;
-	p[0] = inputLayer;
+	p[0] = iL;
 	for(let i = 0; i < ll-1; i++){
 		for(let j = 0; j < l[i+1]; j++){
 			let sum = 0;
@@ -118,79 +149,196 @@ AI.ANN.backPropagation = function (answer, learnRate){
 	}
 };
 
-AI.ANN.setLayer([2,8,1]);
-// AI.ANN.variable.weight=[[[10,10],[-10,10],[-10,-10],[10,-10]],[[-10,10,-10,10]]];
-// AI.ANN.variable.bias=[[0,0,0,0],[0]];
-
-var time;
-function learn(){
-	clearInterval(time);
-	time = setInterval(function(){
-	for(let _$=0; _$<100; _$++){
-		for(let n=0; n<1000; n++){
-			AI.ANN.propagation([0,0]);
-			AI.ANN.backPropagation([0], 0.0008);
-			AI.ANN.propagation([0.4,0]);
-			AI.ANN.backPropagation([0], 0.0008);
-			AI.ANN.propagation([0.6,0]);
-			AI.ANN.backPropagation([1], 0.0008);
-			AI.ANN.propagation([1,0]);
-			AI.ANN.backPropagation([1], 0.0008);
-
-			AI.ANN.propagation([0,0.4]);
-			AI.ANN.backPropagation([0], 0.0008);
-			AI.ANN.propagation([0.4,0.4]);
-			AI.ANN.backPropagation([0], 0.0008);
-			AI.ANN.propagation([0.6,0.4]);
-			AI.ANN.backPropagation([1], 0.0008);
-			AI.ANN.propagation([1,0.4]);
-			AI.ANN.backPropagation([1], 0.0008);
-
-			AI.ANN.propagation([0,0.6]);
-			AI.ANN.backPropagation([1], 0.0008);
-			AI.ANN.propagation([0.4,0.6]);
-			AI.ANN.backPropagation([1], 0.0008);
-			AI.ANN.propagation([0.6,0.6]);
-			AI.ANN.backPropagation([0], 0.0008);
-			AI.ANN.propagation([1,0.6]);
-			AI.ANN.backPropagation([0], 0.0008);
-
-			AI.ANN.propagation([0,1]);
-			AI.ANN.backPropagation([1], 0.0008);
-			AI.ANN.propagation([0.4,1]);
-			AI.ANN.backPropagation([1], 0.0008);
-			AI.ANN.propagation([0.6,1]);
-			AI.ANN.backPropagation([0], 0.0008);
-			AI.ANN.propagation([1,1]);
-			AI.ANN.backPropagation([0], 0.0008);
-
+function extractImage(){
+	let k = ctx.getImageData(0,0,28,28).data;
+	let r = mkTensor(28,28);
+	for(let i=0; i<28; i++){
+		for(let j=0; j<28; j++){
+			r[i][j]=k[(i*28+j)*4+3];
 		}
 	}
-		cl((AI.ANN.propagation([1,0])[0]-1)**2+(AI.ANN.propagation([0,1])[0]-1)**2+AI.ANN.propagation([0,0])[0]**2+AI.ANN.propagation([1,1])[0]**2);
-	},3000);
-	setTimeout(function(){
-		clearInterval(time);
-		cl('complete')
-	},20000);
+	return r;
+};
+function arrayFlipX(arr){
+	let y=arr.length, x=arr[0].length;
+	let r = mkTensor(y,x);
+	for(let i=0; i<y; i++){
+		for(let j=0; j<x; j++){
+			r[i][j]=arr[i][x-j-1];
+		}
+	}
+	return r;
+};
+function arrayFlipY(arr){
+	let y=arr.length, x=arr[0].length;
+	let r = mkTensor(y,x);
+	for(let i=0; i<y; i++){
+		for(let j=0; j<x; j++){
+			r[i][j]=arr[y-i-1][j];
+		}
+	}
+	return r;
+};
+function transposedArray(arr){
+	let y=arr.length, x=arr[0].length;
+	let r = mkTensor(y,x);
+	for(let i=0; i<y; i++){
+		for(let j=0; j<x; j++){
+			r[i][j]=arr[j][i];
+		}
+	}
+	return r;
+};
+function padding(arr){
+	let yl = arr.length, xl=arr[0].length;
+	let r = JSON.new(arr);
+	r.unshift(mkTensor(xl));
+	r.push(mkTensor(xl));
+	r.map(i=>{i.unshift(0); i.push(0)});
+	return r;
+}
+var testSet;
+var filter;
+filter = [[[1,1,1],[0,0,0],[-1,-1,-1]],[[1,0,-1],[1,0,-1],[1,0,-1]],[[1,1,1],[1,-8,1],[1,1,1]]];
+
+function convolution(img,filter){
+	let image = padding(img);
+	let iy = image.length, ix = image[0].length, fy = filter.length, fx = filter[0].length;
+	let y = iy-fy+1, x = ix-fx+1;
+	let r = mkTensor(y,x);
+	let sum;
+	for(let i = 0; i < y; i++){
+		for(let j = 0; j < x; j++){
+			sum = 0;
+			for(let k = 0; k < fy; k++){
+				for(let l = 0; l < fx; l++){
+					sum+=image[i+k][j+l]*filter[k][l];
+				}
+			}
+			r[i][j]=sum;
+		}
+	}
+	return r;
+};
+function maxPooling(convolutedImage){
+	let y = Math.floor(convolutedImage.length/3), x = Math.floor(convolutedImage[0].length/3);
+	let r = mkTensor(y,x);
+	let max, temp;
+	for(let i=0; i<y; i++){
+		for(let j=0; j<x; j++){
+			max=0;
+			for(let k=0; k<3; k++){
+				for(let l=0; l<3; l++){
+					temp=convolutedImage[i*3+k][j*3+l];
+					if(temp>max)max=temp;
+				}
+			}
+			r[i][j]=max>0?max/50:0;
+		}
+	}
+	return r;
+}
+var convolutioned;
+function step1(){
+	testSet = extractImage();
+	convolutioned = [[],[]];
+	for(let i=0; i<filter.length; i++){
+		convolutioned[0].push(maxPooling(convolution(testSet,filter[i])));
+	}
 }
 
-var a = document.createElement('canvas');
-a.setAttribute('width',"100px");
-a.setAttribute('height',"100px");
-a.setAttribute('style',"border: 1px solid black;");
-var b = document.querySelector("body > div.Network");
-b.appendChild(a);
-var c = document.querySelector('canvas');
-var d = c.getContext('2d');
-
-function setColor(color){d.fillStyle = `rgb(${Math.floor(color*255)},255,${Math.floor(color*255)})`};
-
-function view(){
-	d.clearRect(0,0,100,100);
-	for(let i=0; i<101; i++){ for(let j=101; j>=0; j--){
-		setColor(1-AI.ANN.propagation([i/100,j/100])[0]);
-		d.beginPath();
-		d.fillRect(i,j,1,1);
-		d.closePath();
-	}}
+var inputLayer;
+function step2(){
+	for(let i=0; i<convolutioned[0].length; i++){
+		for(let j=0; j<filter.length; j++){
+			convolutioned[1].push(maxPooling(convolution(convolutioned[0][i],filter[j])).flat());
+		}
+	}
+	inputLayer = JSON.new(convolutioned[1].flat());
 }
+
+function mkResultArray(n){
+	let r = Array(10).fill(0);
+	r[n] = 1;
+	return r;
+}
+
+AI.ANN.setLayer([81,10,10]);
+
+// function step3(n){
+// 	step1();
+// 	step2();
+// 	AI.ANN.propagation(inputLayer);
+// 	for(let i=0; i<1000; i++){
+// 		AI.ANN.backPropagation(mkResultArray(n), 0.08);
+// 	}
+// }
+
+var convolutionedSet = mkTensor(10,0);
+
+function showExpectation(...a){
+	let t = AI.ANN.propagation(inputLayer);
+	let index=0, max = 0, cost = 0;
+	for(let i=0; i<10; i++){
+		if(t[i] > max){
+			max = t[i];
+			index = i;
+		}
+		cost += (t[i] - (a[0]==i?1:0))**2;
+	}
+	select("#expection").innerText = index + " : " + JSON.stringify(t);
+	return [index,cost];
+}
+
+document.onkeydown = function(e){
+	if(!e.shiftKey){
+		if(!Number.isNaN(Number(e.key))){
+			step1();
+			step2();
+			convolutionedSet[Number(e.key)].push(inputLayer);
+		}
+	}else{
+		step1();
+		step2();
+		cl("expecting...");
+		showExpectation();
+	}
+};
+
+var learnMacro = function(){
+	console.log("executing...");
+	let a,b;
+	for(let n=0; n<100; n++){
+		console.log(n+"%");
+		for(let i=0; i<10; i++){
+			for(let j=0; j<convolutionedSet[i].length; j++){
+				AI.ANN.propagation(convolutionedSet[i][j]);
+				AI.ANN.backPropagation(mkResultArray(i), 0.1);
+			}
+		}
+	}
+	console.log("done!");
+	// for(let i=0; i<10; i++){
+	// 	for(let j=0; j<5; j++){
+	// 		inputLayer = convolutionedSet[i][Math.floor(Math.random()*10+10)];
+	// 		console.log((i==showExpectation()[0])?"정답":("숫자 "+i+"을 인공지능이 예상한 값 : "+showExpectation()[0])+"\t오차 : "+showExpectation(i)[1]);
+	// 	}
+	// }
+};
+
+function similarity(arr,n){
+	let sum = 0;
+	for(let i=0; i<10; i++){
+		sum += (n==i?1:-1)*arr[i];
+	}
+	return sum;
+}
+
+AI.ANN.variable = ann_data;
+AI.ANN.variable.activationFunction = [Math.tanh, AI.activationFunction.sigmoid];
+
+
+
+
+
+
