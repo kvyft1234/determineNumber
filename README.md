@@ -2,5 +2,5 @@
 made as CNN. 숫자 인식 인공지능
 
 ```
-sdf
+https://kvyft1234.github.io/determineNumber/main.html
 ```
