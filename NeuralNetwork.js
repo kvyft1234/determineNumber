@@ -37,6 +37,7 @@ var mkArray2 = function(arr){let r=mkTensor(arr.length); for(let i=0; i<arr.leng
 var fillRandom = function(arr){
 	return arr.map(i => Math.random()).map(i => Math.log(i/(1-i))/2);
 };
+var jn=JSON.new;
 
 const AI = {};
 
@@ -188,22 +189,20 @@ function transposedArray(arr){
 	}
 	return r;
 };
+function padding(arr){
+	let yl = arr.length, xl=arr[0].length;
+	let r = JSON.new(arr);
+	r.unshift(mkTensor(xl));
+	r.push(mkTensor(xl));
+	r.map(i=>{i.unshift(0); i.push(0)});
+	return r;
+}
 var testSet;
 var filter;
-filter = [[[1,1,1,1],[1,1,1,1],[-1,-1,-1,-1],[-1,-1,-1,-1]],[[1,1,1,-1],[1,1,-1,-1],[1,1,-1,-1],[1,-1,-1,-1]]];
-filter.push(arrayFlipY(filter[0]));
-filter.push(transposedArray(filter[0]));
-filter.push(transposedArray(filter[2]));
+filter = [[[1,1,1],[0,0,0],[-1,-1,-1]],[[1,0,-1],[1,0,-1],[1,0,-1]],[[1,1,1],[1,-8,1],[1,1,1]]];
 
-filter.push(transposedArray(filter[1]));
-filter.push(arrayFlipX(filter[5]));
-filter.push(arrayFlipX(filter[1]));
-filter.push(arrayFlipY(filter[1]));
-filter.push(arrayFlipY(filter[5]));
-filter.push(arrayFlipY(filter[6]));
-filter.push(arrayFlipY(filter[7]));
-
-function convolution(image,filter){
+function convolution(img,filter){
+	let image = padding(img);
 	let iy = image.length, ix = image[0].length, fy = filter.length, fx = filter[0].length;
 	let y = iy-fy+1, x = ix-fx+1;
 	let r = mkTensor(y,x);
@@ -222,15 +221,15 @@ function convolution(image,filter){
 	return r;
 };
 function maxPooling(convolutedImage){
-	let y = Math.floor(convolutedImage.length/2), x = Math.floor(convolutedImage[0].length/2);
+	let y = Math.floor(convolutedImage.length/3), x = Math.floor(convolutedImage[0].length/3);
 	let r = mkTensor(y,x);
 	let max, temp;
 	for(let i=0; i<y; i++){
 		for(let j=0; j<x; j++){
 			max=0;
-			for(let k=0; k<2; k++){
-				for(let l=0; l<2; l++){
-					temp=convolutedImage[i*2+k][j*2+l];
+			for(let k=0; k<3; k++){
+				for(let l=0; l<3; l++){
+					temp=convolutedImage[i*3+k][j*3+l];
 					if(temp>max)max=temp;
 				}
 			}
@@ -242,18 +241,6 @@ function maxPooling(convolutedImage){
 var convolutioned;
 function step1(){
 	testSet = extractImage();
-	filter = [[[1,1,1,1],[1,1,1,1],[-1,-1,-1,-1],[-1,-1,-1,-1]],[[1,1,1,-1],[1,1,-1,-1],[1,1,-1,-1],[1,-1,-1,-1]]];
-	filter.push(arrayFlipY(filter[0]));
-	filter.push(transposedArray(filter[0]));
-	filter.push(transposedArray(filter[2]));
-
-	filter.push(transposedArray(filter[1]));
-	filter.push(arrayFlipX(filter[5]));
-	filter.push(arrayFlipX(filter[1]));
-	filter.push(arrayFlipY(filter[1]));
-	filter.push(arrayFlipY(filter[5]));
-	filter.push(arrayFlipY(filter[6]));
-	filter.push(arrayFlipY(filter[7]));
 	convolutioned = [[],[]];
 	for(let i=0; i<filter.length; i++){
 		convolutioned[0].push(maxPooling(convolution(testSet,filter[i])));
@@ -262,31 +249,12 @@ function step1(){
 
 var inputLayer;
 function step2(){
-	filter = [[[1,-1,-1,1],[1,-1,-1,1],[1,-1,-1,1],[1,-1,-1,1]],[[-1,-1,-1,1],[1,-1,-1,1],[1,-1,-1,1],[1,-1,-1,-1]]];
-	filter.push(arrayFlipY(filter[0]));
-	filter.push(transposedArray(filter[0]));
-	filter.push(transposedArray(filter[2]));
-	filter.push(transposedArray(filter[1]));
-	filter.push(arrayFlipX(filter[5]));
-	filter.push(arrayFlipX(filter[1]));
-	filter.push(arrayFlipY(filter[1]));
-	filter.push(arrayFlipY(filter[5]));
-	filter.push(arrayFlipY(filter[6]));
-	filter.push(arrayFlipY(filter[7]));
-	filter.push([[1,1,1,1],[1,-1,-1,1],[1,-1,-1,1],[1,1,1,1]]);
 	for(let i=0; i<convolutioned[0].length; i++){
 		for(let j=0; j<filter.length; j++){
 			convolutioned[1].push(maxPooling(convolution(convolutioned[0][i],filter[j])).flat());
 		}
 	}
-	convolutioned.push([]);
-	convolutioned[2] = mkTensor(convolutioned[1][0].length);
-	for(let i = 0; i < convolutioned[1].length; i++){
-		for(let j = 0; j < convolutioned[1][i].length; j++){
-			convolutioned[2][j] += (convolutioned[1][i][j]-0.6)/20;
-		}
-	}
-	inputLayer = JSON.new(convolutioned[2]);
+	inputLayer = JSON.new(convolutioned[1].flat());
 }
 
 function mkResultArray(n){
@@ -295,7 +263,7 @@ function mkResultArray(n){
 	return r;
 }
 
-AI.ANN.setLayer([16,50,10]);
+AI.ANN.setLayer([81,10,10]);
 
 // function step3(n){
 // 	step1();
@@ -308,16 +276,18 @@ AI.ANN.setLayer([16,50,10]);
 
 var convolutionedSet = mkTensor(10,0);
 
-function showExpectation(){
+function showExpectation(...a){
 	let t = AI.ANN.propagation(inputLayer);
-	let index=0, max = 0;
+	let index=0, max = 0, cost = 0;
 	for(let i=0; i<10; i++){
 		if(t[i] > max){
 			max = t[i];
 			index = i;
 		}
+		cost += (t[i] - (a[0]==i?1:0))**2;
 	}
 	select("#expection").innerText = index + " : " + JSON.stringify(t);
+	return [index,cost];
 }
 
 document.onkeydown = function(e){
@@ -337,19 +307,24 @@ document.onkeydown = function(e){
 
 var learnMacro = function(){
 	console.log("executing...");
+	let a,b;
 	for(let n=0; n<100; n++){
-		console.log(n+"%")
+		console.log(n+"%");
 		for(let i=0; i<10; i++){
 			for(let j=0; j<convolutionedSet[i].length; j++){
-				for(let k=0; k<20; k++){
-					AI.ANN.propagation(convolutionedSet[i][j]);
-					AI.ANN.backPropagation(mkResultArray(i), 1);
-				}
+				AI.ANN.propagation(convolutionedSet[i][j]);
+				AI.ANN.backPropagation(mkResultArray(i), 0.1);
 			}
 		}
 	}
 	console.log("done!");
-}
+	// for(let i=0; i<10; i++){
+	// 	for(let j=0; j<5; j++){
+	// 		inputLayer = convolutionedSet[i][Math.floor(Math.random()*10+10)];
+	// 		console.log((i==showExpectation()[0])?"정답":("숫자 "+i+"을 인공지능이 예상한 값 : "+showExpectation()[0])+"\t오차 : "+showExpectation(i)[1]);
+	// 	}
+	// }
+};
 
 function similarity(arr,n){
 	let sum = 0;
@@ -359,8 +334,10 @@ function similarity(arr,n){
 	return sum;
 }
 
-// convolutionedSet = data;
-// learnMacro();
+AI.ANN.variable = ann_data;
+AI.ANN.variable.activationFunction = [Math.tanh, AI.activationFunction.sigmoid];
+
+
 
 
 
